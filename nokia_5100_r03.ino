@@ -136,19 +136,6 @@ class NokiaLCDChar {
     byte data_[dataCount];
 };
 
-
-/* Pin definitions: 
-Most of these pins can be moved to any digital or analog pin.
-DN(MOSI)and SCLK should be left where they are (SPI pins). The 
-LED (backlight) pin should remain on a PWM-capable pin. */
-const int scePin = 7;   // SCE - Chip select, pin 3 on LCD.
-const int rstPin = 6;   // RST - Reset, pin 4 on LCD.
-const int dcPin = 5;    // DC - Data/Command, pin 5 on LCD.
-const int sdinPin = 11;  // DN(MOSI) - Serial data, pin 6 on LCD.
-const int sclkPin = 13;  // SCLK - Serial clock, pin 7 on LCD.
-const int blPin = 9;    // LED - Backlight LED, pin 8 on LCD.
-
-
 class NokiaLCD {
   public:
     enum Mode {
@@ -157,25 +144,44 @@ class NokiaLCD {
     };
 
   public:
+    NokiaLCD (
+      char chipEnablePin,    // SCE - Chip select
+      char resetPin,         // RST - Reset
+      char dataCommandPin,   // DC - Data/Command
+      char dataInPin,        // DN(MOSI) - Serial data
+      char clockPin,         // SCLK - Serial clock
+      char backlightPin = -1 // LED - Backlight LED
+    )
+      : chipEnablePin(chipEnablePin)
+      , resetPin(resetPin)
+      , dataCommandPin(dataCommandPin)
+      , dataInPin(dataInPin)
+      , clockPin(clockPin)
+      , backlightPin(backlightPin)
+    {
+    }
+
       //This sends the magical commands to the PCD8544
-    void initialize() 
+    void initialize()
     {
       //Configure control pins
-      pinMode(scePin, OUTPUT);
-      pinMode(rstPin, OUTPUT);
-      pinMode(dcPin, OUTPUT);
-      pinMode(sdinPin, OUTPUT);
-      pinMode(sclkPin, OUTPUT);
-      pinMode(blPin, OUTPUT);
-      analogWrite(blPin, 255);
+      pinMode(chipEnablePin, OUTPUT);
+      pinMode(resetPin, OUTPUT);
+      pinMode(dataCommandPin, OUTPUT);
+      pinMode(dataInPin, OUTPUT);
+      pinMode(clockPin, OUTPUT);
+      if (backlightPin >= 0) {
+        pinMode(backlightPin, OUTPUT);
+        analogWrite(backlightPin, 255);
+      }
     
       SPI.begin();
       SPI.setDataMode(SPI_MODE0);
       SPI.setBitOrder(MSBFIRST);
       
       //Reset the LCD to a known state
-      digitalWrite(rstPin, LOW);
-      digitalWrite(rstPin, HIGH);
+      digitalWrite(resetPin, LOW);
+      digitalWrite(resetPin, HIGH);
     
       LCDWrite(COMMAND, 0x21); //Tell LCD extended commands follow
       LCDWrite(COMMAND, 0xB0); //Set LCD Vop (Contrast)
@@ -192,12 +198,12 @@ class NokiaLCD {
     void LCDWrite(byte data_or_command, byte data) 
     {
       //Tell the LCD that we are writing either to data or a command
-      digitalWrite(dcPin, data_or_command); 
+      digitalWrite(dataCommandPin, data_or_command); 
     
       //Send the data
-      digitalWrite(scePin, LOW);
+      digitalWrite(chipEnablePin, LOW);
       SPI.transfer(data); //shiftOut(sdinPin, sclkPin, MSBFIRST, data);
-      digitalWrite(scePin, HIGH);
+      digitalWrite(chipEnablePin, HIGH);
     }
 
     // Set contrast can set the LCD Vop to a value between 0 and 127.
@@ -313,7 +319,14 @@ class NokiaLCD {
     constexpr static size_t pixelsCount_ = width_ * height_;
     constexpr static size_t blockCount_ = pixelsCount_ / 8;
 
-  public:
+  private:
+    const char chipEnablePin;
+    const char resetPin;
+    const char dataCommandPin;
+    const char dataInPin;
+    const char clockPin;
+    const char backlightPin;
+
     /* The displayMap variable stores a buffer representation of the
     pixels on our display. There are 504 total bits in this array,
     same as how many pixels there are on a 84 x 48 display.
@@ -375,7 +388,7 @@ class NokiaLCD {
 
 };
 
-NokiaLCD lcd;
+NokiaLCD lcd(7, 6, 5, 11, 13);
 
 void setup()
 {
