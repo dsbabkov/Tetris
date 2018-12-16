@@ -1,14 +1,20 @@
 #include <SPI.h>
 
-/* PCD8544-specific defines: */
-enum LCD_MODE {
-  LCD_COMMAND = 0,
-  LCD_DATA = 1
+class NokiaLCD {
+  public:
+    enum Mode {
+      COMMAND = 0,
+      DATA = 1
+    };
+
+  public:
+    constexpr static size_t width_ = 84;
+    constexpr static size_t height_ = 48;
+    constexpr static size_t pixelsCount_ = width_ * height_;
+    constexpr static size_t blockCount_ = pixelsCount_ / 8;
 };
 
 /* 84x48 LCD Defines: */
-#define LCD_WIDTH   84 // Note: x-coordinates go wide
-#define LCD_HEIGHT  48 // Note: y-coordinates go high
 #define WHITE       0  // For drawing pixels. A 0 draws white.
 #define BLACK       1  // A 1 draws black.
 
@@ -144,7 +150,7 @@ to the PCD8544.
 
 Because the PCD8544 won't let us write individual pixels at a 
 time, this is how we can make targeted changes to the display. */
-byte displayMap[LCD_WIDTH * LCD_HEIGHT / 8] = {
+byte displayMap[NokiaLCD::blockCount_] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // (0,0)->(11,7) ~ These 12 bytes cover an 8x12 block in the left corner of the display 
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // (12,0)->(23,7)
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, // (24,0)->(35,7)
@@ -198,9 +204,7 @@ void setup()
   updateDisplay(); // with displayMap untouched, SFE logo
   setContrast(40); // Good values range from 40-60
   delay(2000);
-  
-  //lcdFunTime(); // Runs a 30-second demo of graphics functions
-  
+    
   // Wait for serial to come in, then clear display and go to echo
   while (!Serial.available())
     ;
@@ -241,11 +245,11 @@ void loop()
       break;
     }
     // Manage cursor
-    if (cursorX >= (LCD_WIDTH - 4)) 
+    if (cursorX >= (NokiaLCD::width_ - 4)) 
     { // If the next char will be off screen...
       cursorX = 0; // ... reset x to 0...
       cursorY += 8; // ...and increment to next line.
-      if (cursorY >= (LCD_HEIGHT - 7))
+      if (cursorY >= (NokiaLCD::height_ - 7))
       { // If the next line takes us off screen...
         cursorY = 0; // ...go back to the top.
       }
@@ -270,14 +274,14 @@ void clearPixel(int x, int y)
 void setPixel(int x, int y, boolean bw)
 {
   // First, double check that the coordinate is in range.
-  if ((x >= 0) && (x < LCD_WIDTH) && (y >= 0) && (y < LCD_HEIGHT))
+  if (x >= 0 && x < NokiaLCD::width_ && y >= 0 && y < NokiaLCD::height_)
   {
     byte shift = y % 8;
   
     if (bw) // If black, set the bit.
-      displayMap[x + (y/8)*LCD_WIDTH] |= 1<<shift;
+      displayMap[x + (y/8)*NokiaLCD::width_] |= 1<<shift;
     else   // If white clear the bit.
-      displayMap[x + (y/8)*LCD_WIDTH] &= ~(1<<shift);
+      displayMap[x + (y/8)*NokiaLCD::width_] &= ~(1<<shift);
   }
 }
 
@@ -305,7 +309,7 @@ void setChar(char character, int x, int y, boolean bw)
 // The screen won't actually clear until you call updateDisplay()!
 void clearDisplay(boolean bw)
 {
-  for (int i=0; i<(LCD_WIDTH * LCD_HEIGHT / 8); i++)
+  for (int i=0; i < NokiaLCD::blockCount_; i++)
   {
     if (bw)
       displayMap[i] = 0xFF;
@@ -327,19 +331,19 @@ void gotoXY(int x, int y)
 void updateDisplay()
 {
   gotoXY(0, 0);
-  for (int i=0; i < (LCD_WIDTH * LCD_HEIGHT / 8); i++)
+  for (int i=0; i < NokiaLCD::blockCount_; i++)
   {
-    LCDWrite(LCD_DATA, displayMap[i]);
+    LCDWrite(NokiaLCD::DATA, displayMap[i]);
   }
 }
 
 // Set contrast can set the LCD Vop to a value between 0 and 127.
 // 40-60 is usually a pretty good range.
 void setContrast(byte contrast)
-{  
-  LCDWrite(LCD_COMMAND, 0x21); //Tell LCD that extended commands follow
-  LCDWrite(LCD_COMMAND, 0x80 | contrast); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
-  LCDWrite(LCD_COMMAND, 0x20); //Set display mode
+{
+  LCDWrite(NokiaLCD::COMMAND, 0x21); //Tell LCD that extended commands follow
+  LCDWrite(NokiaLCD::COMMAND, 0x80 | contrast); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
+  LCDWrite(NokiaLCD::COMMAND, 0x20); //Set display mode
 }
 
 /* There are two ways to do this. Either through direct commands
@@ -354,7 +358,7 @@ void invertDisplay()
   LCDWrite(LCD_COMMAND, 0x20); //Set display mode  */
   
   /* Indirect, swap bits in displayMap option: */
-  for (int i=0; i < (LCD_WIDTH * LCD_HEIGHT / 8); i++)
+  for (int i=0; i < NokiaLCD::blockCount_; i++)
   {
     displayMap[i] = ~displayMap[i] & 0xFF;
   }
@@ -395,13 +399,13 @@ void lcdBegin(void)
   digitalWrite(rstPin, LOW);
   digitalWrite(rstPin, HIGH);
 
-  LCDWrite(LCD_COMMAND, 0x21); //Tell LCD extended commands follow
-  LCDWrite(LCD_COMMAND, 0xB0); //Set LCD Vop (Contrast)
-  LCDWrite(LCD_COMMAND, 0x04); //Set Temp coefficent
-  LCDWrite(LCD_COMMAND, 0x14); //LCD bias mode 1:48 (try 0x13)
+  LCDWrite(NokiaLCD::COMMAND, 0x21); //Tell LCD extended commands follow
+  LCDWrite(NokiaLCD::COMMAND, 0xB0); //Set LCD Vop (Contrast)
+  LCDWrite(NokiaLCD::COMMAND, 0x04); //Set Temp coefficent
+  LCDWrite(NokiaLCD::COMMAND, 0x14); //LCD bias mode 1:48 (try 0x13)
   //We must send 0x20 before modifying the display control mode
-  LCDWrite(LCD_COMMAND, 0x20); 
-  LCDWrite(LCD_COMMAND, 0x0C); //Set display control, normal mode.
+  LCDWrite(NokiaLCD::COMMAND, 0x20); 
+  LCDWrite(NokiaLCD::COMMAND, 0x0C); //Set display control, normal mode.
 }
 
 
