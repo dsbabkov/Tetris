@@ -10,11 +10,11 @@ class NokiaLCDChar {
     constexpr static size_t dataCount = 5;
 
   public:
-    NokiaLCDChar(const byte data[dataCount]) {
-      for (size_t i = 0; i < dataCount; ++i) {
-        data_[i] = data[i];
-      }
+    NokiaLCDChar()
+      : data_()
+    {
     }
+    
     NokiaLCDChar(byte b0, byte b1, byte b2, byte b3, byte b4)
     {
       data_[0] = b0;
@@ -129,7 +129,7 @@ class NokiaLCDChar {
         case '~': return {0x10, 0x08, 0x08, 0x10, 0x08};
         case 0x7f: return {0x78, 0x46, 0x41, 0x46, 0x78}; //DEL
     }
-    return {0,0,0,0,0};
+    return {};
   }
     
   private:
