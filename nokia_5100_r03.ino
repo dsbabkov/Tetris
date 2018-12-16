@@ -300,38 +300,6 @@ void setChar(char character, int x, int y, boolean bw)
   }
 }
 
-// setStr draws a string of characters, calling setChar with
-// progressive coordinates until it's done.
-// This function was grabbed from the SparkFun ColorLCDShield
-// library.
-void setStr(char * dString, int x, int y, boolean bw)
-{
-  while (*dString != 0x00) // loop until null terminator
-  {
-    setChar(*dString++, x, y, bw);
-    x+=5;
-    for (int i=y; i<y+8; i++)
-    {
-      setPixel(x, i, !bw);
-    }
-    x++;
-    if (x > (LCD_WIDTH - 5)) // Enables wrap around
-    {
-      x = 0;
-      y += 8;
-    }
-  }
-}
-
-// This function will draw an array over the screen. (For now) the
-// array must be the same size as the screen, covering the entirety
-// of the display.
-void setBitmap(char * bitArray)
-{
-  for (int i=0; i<(LCD_WIDTH * LCD_HEIGHT / 8); i++)
-    displayMap[i] = bitArray[i];
-}
-
 // This function clears the entire display either white (0) or
 // black (1).
 // The screen won't actually clear until you call updateDisplay()!
