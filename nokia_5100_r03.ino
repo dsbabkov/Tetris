@@ -164,7 +164,11 @@ class NokiaLCD {
       , dataInPin(dataInPin)
       , clockPin(clockPin)
       , backlightPin(backlightPin)
-      , functionSet_(0b00100000 | PowerDown)
+      , powerDown_(true)
+      , verticalAddressing_(false)
+      , extendedInstructionSet_(false)
+      , x_(0)
+      , y_(0)
     {
     }
 
@@ -232,18 +236,30 @@ class NokiaLCD {
     
     // Helpful function to directly command the LCD to go to a 
     // specific x,y coordinate.
-    void gotoXY(int x, int y)
+    void gotoXY(byte x, byte y)
     {
-      LCDWrite(0, 0x80 | x);  // Column.
-      LCDWrite(0, 0x40 | y);  // Row.  ?
+      if (x != x_) {
+        x_ = x;
+        writeXPos();
+      }
+      if (y != y_) {
+        y_ = y;
+        writeYPos();
+      }
     }
     
     void print(char c) {
+      if (c == '\n') {
+        goToNewLine();
+        return;
+      }
+      
       const NokiaLCDChar &symbol = NokiaLCDChar::generate(c);
       for (size_t i = 0; i < 5; ++i) {
         LCDWrite(DATA, symbol[i]);
       }
       LCDWrite(DATA, 0);
+      shiftPos(6);
     }
 
     void print(const char *text) {
@@ -254,7 +270,7 @@ class NokiaLCD {
     }
 
   InstructionSet instructionSet() const {
-    return static_cast<InstructionSet>(functionSet_ & 1);
+    return static_cast<InstructionSet>(extendedInstructionSet_);
   }
 
   NokiaLCD &operator<<(char c) {
@@ -277,8 +293,8 @@ class NokiaLCD {
     }
     
     void powerUp() {
-      functionSet_ &= ~PowerDown;
-      LCDWrite(COMMAND, functionSet_);
+      powerDown_ = false;      
+      writeFunctionSet();
     }
     
     void use(InstructionSet set) {
@@ -286,15 +302,61 @@ class NokiaLCD {
         return;
       }
 
-      functionSet_ ^= 1;  // toggle instruction set bit
-      LCDWrite(COMMAND, functionSet_);
+      extendedInstructionSet_ = !extendedInstructionSet_;      
+      writeFunctionSet();
+    }
+
+    void writeFunctionSet() {
+      constexpr byte command = 0b00100000;
+      LCDWrite(COMMAND, command | 
+                        (powerDown_ << 2) |
+                        (verticalAddressing_ << 1) |
+                        extendedInstructionSet_);
+    }
+
+    size_t pos() const {
+      return verticalAddressing_ ?
+              x_ * height_ + y_ :
+              y_ * width_ + x_;
+    }
+
+    void shiftPos(size_t count) {
+      const size_t newPos = (count + pos()) % blockCount_;
+      if (verticalAddressing_) {
+        x_ = newPos / height_;
+        y_ = newPos % height_;
+      }
+      else {
+        x_ = newPos % width_;
+        y_ = newPos / width_;
+      }
+    }
+
+    void goToNewLine() {
+      if (x_ != 0) {
+        x_ = 0;
+        writeXPos();
+      }
+      
+      ++y_;
+      if (y_ == height_) {
+        y_ = 0;
+      }
+      writeYPos();
+    }
+
+    void writeXPos() {
+      LCDWrite(0, 0x80 | x_);
+    }
+
+    void writeYPos() {
+      LCDWrite(0, 0x40 | y_);      
     }
 
   public:
     constexpr static size_t width_ = 84;
-    constexpr static size_t height_ = 48;
-    constexpr static size_t pixelsCount_ = width_ * height_;
-    constexpr static size_t blockCount_ = pixelsCount_ / 8;
+    constexpr static size_t height_ = 6;
+    constexpr static size_t blockCount_ = width_ * height_;
 
   private:
     const char chipEnablePin;
@@ -303,7 +365,11 @@ class NokiaLCD {
     const char dataInPin;
     const char clockPin;
     const char backlightPin;
-    byte functionSet_;
+    bool powerDown_: 1;
+    bool verticalAddressing_: 1;
+    bool extendedInstructionSet_: 1;
+    size_t x_: 7;
+    size_t y_: 3;
 };
 
 NokiaLCD lcd(7, 6, 5, 11, 13);
