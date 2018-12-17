@@ -246,8 +246,25 @@ class NokiaLCD {
       LCDWrite(DATA, 0);
     }
 
+    void print(const char *text) {
+      while (*text) {
+        print(*text);
+        ++text;
+      }
+    }
+
   InstructionSet instructionSet() const {
     return static_cast<InstructionSet>(functionSet_ & 1);
+  }
+
+  NokiaLCD &operator<<(char c) {
+    print(c);
+    return *this;
+  }
+  
+  NokiaLCD &operator<<(const char *text) {
+    print(text);
+    return *this;
   }
   
   private:
@@ -297,6 +314,8 @@ void setup()
 
   lcd.initialize(); // This will setup our pins, and initialize the LCD
   lcd.setContrast(40); // Good values range from 40-60
+
+  lcd << "Send message\nto serial\n";
 }
 
 void loop()
@@ -309,6 +328,6 @@ void loop()
   const char c = Serial.read();
   Serial.println(c, HEX);  
   
-  lcd.print(c);
+  lcd << c;
 }
 
