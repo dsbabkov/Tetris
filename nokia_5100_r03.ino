@@ -132,6 +132,12 @@ class NokiaLCDChar {
 };
 
 class NokiaLCD {
+  private:
+    enum InstructionSet {
+      BasicInstructionSet = 0,
+      ExtendedInstructionSet = 1
+    };
+    
   public:
     enum Mode {
       COMMAND = 0,
@@ -153,6 +159,7 @@ class NokiaLCD {
       , dataInPin(dataInPin)
       , clockPin(clockPin)
       , backlightPin(backlightPin)
+      , functionSet_(0b00100000)
     {
     }
 
@@ -177,13 +184,13 @@ class NokiaLCD {
       //Reset the LCD to a known state
       digitalWrite(resetPin, LOW);
       digitalWrite(resetPin, HIGH);
-    
-      LCDWrite(COMMAND, 0x21); //Tell LCD extended commands follow
+
+      use(ExtendedInstructionSet);
       LCDWrite(COMMAND, 0xB0); //Set LCD Vop (Contrast)
       LCDWrite(COMMAND, 0x04); //Set Temp coefficent
       LCDWrite(COMMAND, 0x14); //LCD bias mode 1:48 (try 0x13)
-      //We must send 0x20 before modifying the display control mode
-      LCDWrite(COMMAND, 0x20); 
+
+      use(BasicInstructionSet);
       LCDWrite(COMMAND, 0x0C); //Set display control, normal mode.
       clear();
     }
@@ -206,9 +213,9 @@ class NokiaLCD {
     // 40-60 is usually a pretty good range.
     void setContrast(byte contrast)
     {
-      LCDWrite(NokiaLCD::COMMAND, 0x21); //Tell LCD that extended commands follow
+      use(ExtendedInstructionSet);
       LCDWrite(NokiaLCD::COMMAND, 0x80 | contrast); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
-      LCDWrite(NokiaLCD::COMMAND, 0x20); //Set display mode
+      use(BasicInstructionSet);
     }
     
     void clear() {
@@ -234,7 +241,20 @@ class NokiaLCD {
       }
       LCDWrite(DATA, 0);
     }
-    
+
+  InstructionSet instructionSet() const {
+    return static_cast<InstructionSet>(functionSet_ & 1);
+  }
+  
+  private:
+    void use(InstructionSet set) {
+      if (set == instructionSet()) {
+        return;
+      }
+
+      functionSet_ ^= 1;  // toggle instruction set bit
+      LCDWrite(COMMAND, functionSet_);
+    }
 
   public:
     constexpr static size_t width_ = 84;
@@ -249,6 +269,7 @@ class NokiaLCD {
     const char dataInPin;
     const char clockPin;
     const char backlightPin;
+    byte functionSet_;
 };
 
 NokiaLCD lcd(7, 6, 5, 11, 13);
