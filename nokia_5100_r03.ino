@@ -137,6 +137,11 @@ class NokiaLCD {
       BasicInstructionSet = 0,
       ExtendedInstructionSet = 1
     };
+
+    enum PowerDownMode {
+      PowerUp = 0,
+      PowerDown = 1 << 2
+    };
     
   public:
     enum Mode {
@@ -159,7 +164,7 @@ class NokiaLCD {
       , dataInPin(dataInPin)
       , clockPin(clockPin)
       , backlightPin(backlightPin)
-      , functionSet_(0b00100000)
+      , functionSet_(0b00100000 | PowerDown)
     {
     }
 
@@ -180,11 +185,10 @@ class NokiaLCD {
       SPI.begin();
       SPI.setDataMode(SPI_MODE0);
       SPI.setBitOrder(MSBFIRST);
-      
-      //Reset the LCD to a known state
-      digitalWrite(resetPin, LOW);
-      digitalWrite(resetPin, HIGH);
 
+      reset();
+
+      powerUp();
       use(ExtendedInstructionSet);
       LCDWrite(COMMAND, 0xB0); //Set LCD Vop (Contrast)
       LCDWrite(COMMAND, 0x04); //Set Temp coefficent
@@ -247,6 +251,19 @@ class NokiaLCD {
   }
   
   private:
+    void reset() {
+      // resets chip to known state
+      digitalWrite(resetPin, LOW);
+      // need delay min. 100 ns
+      // for 8MHz delay is not needed
+      digitalWrite(resetPin, HIGH);
+    }
+    
+    void powerUp() {
+      functionSet_ &= ~PowerDown;
+      LCDWrite(COMMAND, functionSet_);
+    }
+    
     void use(InstructionSet set) {
       if (set == instructionSet()) {
         return;
