@@ -1,10 +1,5 @@
 #include <SPI.h>
 
-
-/* 84x48 LCD Defines: */
-#define WHITE       0  // For drawing pixels. A 0 draws white.
-#define BLACK       1  // A 1 draws black.
-
 class NokiaLCDChar {
   public:
     constexpr static size_t dataCount = 5;
@@ -215,67 +210,7 @@ class NokiaLCD {
       LCDWrite(NokiaLCD::COMMAND, 0x80 | contrast); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
       LCDWrite(NokiaLCD::COMMAND, 0x20); //Set display mode
     }
-
-    // Because I keep forgetting to put bw variable in when setting...
-    void setPixel(int x, int y)
-    {
-      setPixel(x, y, BLACK); // Call setPixel with bw set to Black
-    }
     
-    void clearPixel(int x, int y)
-    {
-      setPixel(x, y, WHITE); // call setPixel with bw set to white
-    }
-    
-    // This function sets a pixel on displayMap to your preferred
-    // color. 1=Black, 0= white.
-    void setPixel(int x, int y, boolean bw)
-    {
-      // First, double check that the coordinate is in range.
-      if (x >= 0 && x < NokiaLCD::width_ && y >= 0 && y < NokiaLCD::height_)
-      {
-        byte shift = y % 8;
-      
-        if (bw) // If black, set the bit.
-          displayMap[x + (y/8)*NokiaLCD::width_] |= 1<<shift;
-        else   // If white clear the bit.
-          displayMap[x + (y/8)*NokiaLCD::width_] &= ~(1<<shift);
-      }
-    }
-    
-    // This function will draw a char (defined in the ASCII table
-    // near the beginning of this sketch) at a defined x and y).
-    // The color can be either black (1) or white (0).
-    void setChar(char character, int x, int y, boolean bw)
-    {
-      const NokiaLCDChar &symbol = NokiaLCDChar::generate(character);
-      for (int i=0; i<5; i++) // 5 columns (x) per character
-      {
-        const byte column = symbol[i];
-        for (int j=0; j<8; j++) // 8 rows (y) per character
-        {
-          if (column & (0x01 << j)) // test bits to set pixels
-            setPixel(x+i, y+j, bw);
-          else
-            setPixel(x+i, y+j, !bw);
-        }
-      }
-    }
-    
-    // This function clears the entire display either white (0) or
-    // black (1).
-    // The screen won't actually clear until you call updateDisplay()!
-    void clearDisplay(boolean bw)
-    {
-      for (int i=0; i < NokiaLCD::blockCount_; i++)
-      {
-        if (bw)
-          displayMap[i] = 0xFF;
-        else
-          displayMap[i] = 0;
-      }
-    }
-
     void clear() {
       gotoXY(0, 0);
       for (size_t i = 0; i < blockCount_; i++)
@@ -292,35 +227,14 @@ class NokiaLCD {
       LCDWrite(0, 0x40 | y);  // Row.  ?
     }
     
-    // This will actually draw on the display, whatever is currently
-    // in the displayMap array.
-    void updateDisplay()
-    {
-      gotoXY(0, 0);
-      for (int i=0; i < NokiaLCD::blockCount_; i++)
-      {
-        LCDWrite(NokiaLCD::DATA, displayMap[i]);
+    void print(char c) {
+      const NokiaLCDChar &symbol = NokiaLCDChar::generate(c);
+      for (size_t i = 0; i < 5; ++i) {
+        LCDWrite(DATA, symbol[i]);
       }
+      LCDWrite(DATA, 0);
     }
     
-    /* There are two ways to do this. Either through direct commands
-    to the display, or by swapping each bit in the displayMap array.
-    We'll leave both methods here, comment one or the other out if 
-    you please. */
-    void invertDisplay()
-    {
-      /* Direct LCD Command option
-      LCDWrite(LCD_COMMAND, 0x20); //Tell LCD that extended commands follow
-      LCDWrite(LCD_COMMAND, 0x08 | 0x05); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
-      LCDWrite(LCD_COMMAND, 0x20); //Set display mode  */
-      
-      /* Indirect, swap bits in displayMap option: */
-      for (int i=0; i < NokiaLCD::blockCount_; i++)
-      {
-        displayMap[i] = ~displayMap[i] & 0xFF;
-      }
-      updateDisplay();
-    }
 
   public:
     constexpr static size_t width_ = 84;
@@ -335,22 +249,6 @@ class NokiaLCD {
     const char dataInPin;
     const char clockPin;
     const char backlightPin;
-
-    /* The displayMap variable stores a buffer representation of the
-    pixels on our display. There are 504 total bits in this array,
-    same as how many pixels there are on a 84 x 48 display.
-    
-    Each byte in this array covers a 8-pixel vertical block on the 
-    display. Each successive byte covers the next 8-pixel column over
-    until you reach the right-edge of the display and step down 8 rows.
-    
-    To update the display, we first have to write to this array, then
-    call the updateDisplay() function, which sends this whole array
-    to the PCD8544.
-    
-    Because the PCD8544 won't let us write individual pixels at a 
-    time, this is how we can make targeted changes to the display. */
-    byte displayMap[blockCount_] = {};
 };
 
 NokiaLCD lcd(7, 6, 5, 11, 13);
@@ -363,48 +261,16 @@ void setup()
   lcd.setContrast(40); // Good values range from 40-60
 }
 
-// Loop turns the display into a local serial monitor echo.
-// Type to the Arduino from the serial monitor, and it'll echo
-// what you type on the display. Type ~ to clear the display.
 void loop()
 {
-  static int cursorX = 0;
-  static int cursorY = 0;
-  
-  if (Serial.available())
+  if (!Serial.available())
   {
-    char c = Serial.read();
-    
-    switch (c)
-    {
-    case '\n': // New line
-      cursorY += 8;
-      break;
-    case '\r': // Return feed
-      cursorX = 0;
-      break;
-    case '~': // Use ~ to clear the screen.
-      lcd.clearDisplay(WHITE);
-      lcd.updateDisplay();
-      cursorX = 0; // reset the cursor
-      cursorY = 0;
-      break;
-    default:
-      lcd.setChar(c, cursorX, cursorY, BLACK);
-      lcd.updateDisplay();
-      cursorX += 6; // Increment cursor
-      break;
-    }
-    // Manage cursor
-    if (cursorX >= (NokiaLCD::width_ - 4)) 
-    { // If the next char will be off screen...
-      cursorX = 0; // ... reset x to 0...
-      cursorY += 8; // ...and increment to next line.
-      if (cursorY >= (NokiaLCD::height_ - 7))
-      { // If the next line takes us off screen...
-        cursorY = 0; // ...go back to the top.
-      }
-    }
+    return;
   }
+
+  const char c = Serial.read();
+  Serial.println(c, HEX);  
+  
+  lcd.print(c);
 }
 
