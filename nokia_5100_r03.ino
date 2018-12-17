@@ -140,13 +140,18 @@ class NokiaLCD {
 
     enum PowerDownMode {
       PowerUp = 0,
-      PowerDown = 1 << 2
+      PowerDown = 1
     };
-    
+
   public:
     enum Mode {
       COMMAND = 0,
       DATA = 1
+    };
+
+    enum AddressingMode {
+      HorizontalAddressing = 0,
+      VerticalAddressing = 1
     };
 
   public:
@@ -271,6 +276,19 @@ class NokiaLCD {
 
   InstructionSet instructionSet() const {
     return static_cast<InstructionSet>(extendedInstructionSet_);
+  }
+
+  AddressingMode addressingMode() const {
+    return static_cast<AddressingMode>(verticalAddressing_);
+  }
+
+  void use(AddressingMode mode) {
+    if (mode == addressingMode()) {
+      return;
+    }
+
+    verticalAddressing_ = !verticalAddressing_;
+    writeFunctionSet();
   }
 
   NokiaLCD &operator<<(char c) {
