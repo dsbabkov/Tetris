@@ -174,6 +174,7 @@ class NokiaLCD {
       , extendedInstructionSet_(false)
       , x_(0)
       , y_(0)
+      , vop_(0)
     {
     }
 
@@ -198,8 +199,8 @@ class NokiaLCD {
       reset();
 
       powerUp();
-      use(ExtendedInstructionSet);
-      LCDWrite(COMMAND, 0xB0); //Set LCD Vop (Contrast)
+
+      setVOp(48);
       LCDWrite(COMMAND, 0x04); //Set Temp coefficent
       LCDWrite(COMMAND, 0x14); //LCD bias mode 1:48 (try 0x13)
 
@@ -226,8 +227,7 @@ class NokiaLCD {
     // 40-60 is usually a pretty good range.
     void setContrast(byte contrast)
     {
-      use(ExtendedInstructionSet);
-      LCDWrite(NokiaLCD::COMMAND, 0x80 | contrast); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
+      setVOp(contrast);
       use(BasicInstructionSet);
     }
     
@@ -289,6 +289,17 @@ class NokiaLCD {
 
     verticalAddressing_ = !verticalAddressing_;
     writeFunctionSet();
+  }
+
+  void setVOp(byte value) {
+    if (vop_ == value) {
+      return;
+    }
+    
+    use(ExtendedInstructionSet);
+    constexpr byte commandMask = 0b10000000;
+    LCDWrite(COMMAND, 0x80 | value);
+    vop_ = value;
   }
 
   NokiaLCD &operator<<(char c) {
@@ -386,8 +397,9 @@ class NokiaLCD {
     bool powerDown_: 1;
     bool verticalAddressing_: 1;
     bool extendedInstructionSet_: 1;
-    size_t x_: 7;
-    size_t y_: 3;
+    byte x_: 7;
+    byte y_: 3;
+    byte vop_: 7;
 };
 
 NokiaLCD lcd(7, 6, 5, 11, 13);
