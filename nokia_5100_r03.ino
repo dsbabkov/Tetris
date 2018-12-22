@@ -349,6 +349,7 @@ class NokiaLCD {
       digitalWrite(resetPin, LOW);
       // need delay min. 100 ns
       // for 8MHz delay is not needed
+      delayMicroseconds(1);
       digitalWrite(resetPin, HIGH);
     }
     
