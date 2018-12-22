@@ -158,6 +158,13 @@ class NokiaLCD {
       TemperatureCoef3 = 0b11      
     };
 
+    enum DisplayMode {
+      DisplayBlank = 0b000,
+      NormalMode = 0b100,
+      AllSegmentsOn = 0b001,
+      InverseVideo = 0b101
+    };
+
   public:
     enum Mode {
       COMMAND = 0,
@@ -208,8 +215,7 @@ class NokiaLCD {
       setTemperatureCoef(TemperatureCoef0);
       setBias(4);
 
-      use(BasicInstructionSet);
-      LCDWrite(COMMAND, 0x0C); //Set display control, normal mode.
+      setDisplayMode(NormalMode);
       clear();
     }
 
@@ -328,6 +334,12 @@ class NokiaLCD {
     bias_ = value;
   }
 
+  void setDisplayMode(DisplayMode value) {
+    use(BasicInstructionSet);
+    constexpr byte commandMask = 0b00001000;
+    LCDWrite(COMMAND, commandMask | value);
+  }
+
   NokiaLCD &operator<<(char c) {
     print(c);
     return *this;
@@ -432,7 +444,7 @@ void setup()
   Serial.begin(9600);
 
   lcd.initialize(); // This will setup our pins, and initialize the LCD
-  lcd.setContrast(40); // Good values range from 40-60
+  lcd.setContrast(50); // Good values range from 40-60
 
   lcd << "Send message\nto serial\n";
 }
