@@ -211,7 +211,7 @@ class NokiaLCD {
 
       powerUp();
 
-      setVOp(48);
+      setVOp(50);
       setTemperatureCoef(TemperatureCoef0);
       setBias(4);
 
@@ -238,7 +238,6 @@ class NokiaLCD {
     void setContrast(byte contrast)
     {
       setVOp(contrast);
-      use(BasicInstructionSet);
     }
     
     void clear() {

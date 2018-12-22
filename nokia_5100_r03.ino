@@ -7,7 +7,6 @@ void setup()
   Serial.begin(9600);
 
   lcd.initialize(); // This will setup our pins, and initialize the LCD
-  lcd.setContrast(50); // Good values range from 40-60
 
   lcd << "Send message\nto serial\n";
 }
