@@ -181,6 +181,7 @@ class NokiaLCD {
       , extendedInstructionSet_(false)
       , x_(0)
       , y_(0)
+      , bias_(0)
       , vop_(0)
       , temperatureCoef_(TemperatureCoef0)
     {
@@ -210,7 +211,7 @@ class NokiaLCD {
 
       setVOp(48);
       setTemperatureCoef(TemperatureCoef0);
-      LCDWrite(COMMAND, 0x14); //LCD bias mode 1:48 (try 0x13)
+      setBias(4);
 
       use(BasicInstructionSet);
       LCDWrite(COMMAND, 0x0C); //Set display control, normal mode.
@@ -321,6 +322,17 @@ class NokiaLCD {
     temperatureCoef_ = value;
   }
 
+  void setBias(byte value) {
+    if (bias_ == value) {
+      return;
+    }
+
+    use(ExtendedInstructionSet);
+    constexpr byte commandMask = 0b00010000;
+    LCDWrite(COMMAND, commandMask | value);
+    bias_ = value;
+  }
+
   NokiaLCD &operator<<(char c) {
     print(c);
     return *this;
@@ -418,6 +430,7 @@ class NokiaLCD {
     bool extendedInstructionSet_: 1;
     byte x_: 7;
     byte y_: 3;
+    byte bias_: 3;
     byte vop_: 7;
     TemperatureCoef temperatureCoef_: 2;
 };
