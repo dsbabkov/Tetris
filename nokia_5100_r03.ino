@@ -131,6 +131,14 @@ class NokiaLCDChar {
     byte data_[dataCount];
 };
 
+template <
+      char chipEnablePin,    // SCE - Chip select
+      char resetPin,         // RST - Reset
+      char dataCommandPin,   // DC - Data/Command
+      char dataInPin,        // DN(MOSI) - Serial data
+      char clockPin,         // SCLK - Serial clock
+      char backlightPin = -1 // LED - Backlight LED
+>
 class NokiaLCD {
   private:
     enum InstructionSet {
@@ -162,21 +170,8 @@ class NokiaLCD {
     };
 
   public:
-    NokiaLCD (
-      char chipEnablePin,    // SCE - Chip select
-      char resetPin,         // RST - Reset
-      char dataCommandPin,   // DC - Data/Command
-      char dataInPin,        // DN(MOSI) - Serial data
-      char clockPin,         // SCLK - Serial clock
-      char backlightPin = -1 // LED - Backlight LED
-    )
-      : chipEnablePin(chipEnablePin)
-      , resetPin(resetPin)
-      , dataCommandPin(dataCommandPin)
-      , dataInPin(dataInPin)
-      , clockPin(clockPin)
-      , backlightPin(backlightPin)
-      , powerDown_(true)
+    NokiaLCD()
+      : powerDown_(true)
       , verticalAddressing_(false)
       , extendedInstructionSet_(false)
       , x_(0)
@@ -357,7 +352,7 @@ class NokiaLCD {
       powerDown_ = false;      
       writeFunctionSet();
     }
-    
+
     void use(InstructionSet set) {
       if (set == instructionSet()) {
         return;
@@ -420,12 +415,6 @@ class NokiaLCD {
     constexpr static size_t blockCount_ = width_ * height_;
 
   private:
-    const char chipEnablePin;
-    const char resetPin;
-    const char dataCommandPin;
-    const char dataInPin;
-    const char clockPin;
-    const char backlightPin;
     bool powerDown_: 1;
     bool verticalAddressing_: 1;
     bool extendedInstructionSet_: 1;
@@ -436,7 +425,7 @@ class NokiaLCD {
     TemperatureCoef temperatureCoef_: 2;
 };
 
-NokiaLCD lcd(7, 6, 5, 11, 13);
+NokiaLCD<7, 6, 5, 11, 13> lcd;
 
 void setup()
 {
