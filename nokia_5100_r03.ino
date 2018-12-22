@@ -143,6 +143,13 @@ class NokiaLCD {
       PowerDown = 1
     };
 
+    enum TemperatureCoef {
+      TemperatureCoef0 = 0b00,
+      TemperatureCoef1 = 0b01,
+      TemperatureCoef2 = 0b10,
+      TemperatureCoef3 = 0b11      
+    };
+
   public:
     enum Mode {
       COMMAND = 0,
@@ -175,6 +182,7 @@ class NokiaLCD {
       , x_(0)
       , y_(0)
       , vop_(0)
+      , temperatureCoef_(TemperatureCoef0)
     {
     }
 
@@ -201,7 +209,7 @@ class NokiaLCD {
       powerUp();
 
       setVOp(48);
-      LCDWrite(COMMAND, 0x04); //Set Temp coefficent
+      setTemperatureCoef(TemperatureCoef0);
       LCDWrite(COMMAND, 0x14); //LCD bias mode 1:48 (try 0x13)
 
       use(BasicInstructionSet);
@@ -298,8 +306,19 @@ class NokiaLCD {
     
     use(ExtendedInstructionSet);
     constexpr byte commandMask = 0b10000000;
-    LCDWrite(COMMAND, 0x80 | value);
+    LCDWrite(COMMAND, commandMask | value);
     vop_ = value;
+  }
+
+  void setTemperatureCoef(TemperatureCoef value) {
+    if (temperatureCoef_ == value) {
+      return;
+    }
+
+    use(ExtendedInstructionSet);
+    constexpr byte commandMask = 0b00000100;
+    LCDWrite(COMMAND, commandMask | value);
+    temperatureCoef_ = value;
   }
 
   NokiaLCD &operator<<(char c) {
@@ -400,6 +419,7 @@ class NokiaLCD {
     byte x_: 7;
     byte y_: 3;
     byte vop_: 7;
+    TemperatureCoef temperatureCoef_: 2;
 };
 
 NokiaLCD lcd(7, 6, 5, 11, 13);
